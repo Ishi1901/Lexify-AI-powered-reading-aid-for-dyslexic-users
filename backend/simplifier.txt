@@ -1,0 +1,94 @@
+import json
+import torch
+from simpletransformers.language_representation import RepresentationModel
+from sklearn.metrics.pairwise import cosine_similarity
+import nltk
+from nltk.corpus import wordnet, stopwords
+from wordfreq import zipf_frequency
+from complexity_model import complexity_gatekeeper
+
+# Download grammar tools silently
+nltk.download('wordnet', quiet=True)
+nltk.download('stopwords', quiet=True)
+
+class SimplexEngine:
+    def __init__(self):
+        print("⏳ Loading the BERT Sentence Embedding Engine...")
+        self.model = RepresentationModel(
+            model_type="bert",
+            model_name= "bert-base-uncased",
+            use_cuda=False
+        )
+        self.stop_words = set(stopwords.words('english'))
+        
+        # LOAD THE EXTERNAL DICTIONARY
+        print("📖 Loading custom dictionary from JSON...")
+        try:
+            with open("custom_dictionary.json", "r") as file:
+                self.custom_dict = json.load(file)
+            print(f"✅ Loaded {len(self.custom_dict)} custom word overrides!")
+        except FileNotFoundError:
+            print("⚠️ Warning: custom_dictionary.json not found. Using empty dictionary.")
+            self.custom_dict = {}
+        
+
+    def get_synonyms(self, word):
+        synonyms = set()
+        for syn in wordnet.synsets(word):
+            for l in syn.lemmas():
+                if l.name().lower() != word.lower():
+                    synonyms.add(l.name().replace('_', ' '))
+        return list(synonyms)
+
+    def filter_smart_synonyms(self, raw_synonyms):
+        safe_synonyms = []
+        for word in raw_synonyms:
+            clean_word = word.lower().strip()
+            
+            if ' ' in clean_word: continue
+            if len(clean_word) > 12: continue
+            if zipf_frequency(clean_word, 'en') < 3.5: continue
+            
+            safe_synonyms.append(clean_word)
+        return safe_synonyms
+
+    def simplify(self, sentence, complex_word):
+        clean_target = complex_word.lower().strip()
+        
+        # 1. THE STOPWORD SHIELD: Ignore basic grammar words instantly
+        if clean_target in self.stop_words or len(clean_target) <= 3:
+            return sentence
+
+        print(f"\n🔍 Processing: '{complex_word}'")
+        
+        # 2. THE OVERRIDE: Check if we have a perfect human-written replacement first
+        if clean_target in self.custom_dict:
+            safe_syns = self.custom_dict[clean_target]
+            print(f"🎯 Override Dictionary activated! Safe options: {safe_syns}")
+        else:
+            # 3. WORDNET FALLBACK: Get dictionary words and run them through the Bouncer
+            raw_syns = self.get_synonyms(complex_word)
+            print(f"📦 Raw WordNet synonyms for '{complex_word}': {raw_syns}") # 👈 ADD THIS LINE
+            safe_syns = self.filter_smart_synonyms(raw_syns)
+            print(f"🛡️  The Bouncer approved {len(safe_syns)} safe options.")
+
+        if not safe_syns:
+            print("⚠️ No safe synonyms found. Keeping original word to preserve grammar.")
+            return sentence
+
+        # 4. BERT CONTEXT MATCHING: Pick the best contextual fit
+        candidates = [sentence.replace(complex_word, s) for s in safe_syns]
+        
+        orig_encoded = self.model.encode_sentences([sentence], combine_strategy=1)
+        cand_encoded = self.model.encode_sentences(candidates, combine_strategy=1)
+        
+        scores = cosine_similarity(orig_encoded, cand_encoded)[0]
+        best_idx = scores.argmax()
+        
+        best_word = safe_syns[best_idx]
+        print(f"🤖 BERT chose contextually perfect word: '{best_word}'")
+        
+        return candidates[best_idx]
+
+# Initialize engine
+engine = SimplexEngine()

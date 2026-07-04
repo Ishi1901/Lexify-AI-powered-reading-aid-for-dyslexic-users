@@ -1,0 +1,11 @@
+flask
+flask-cors
+torch
+transformers
+simpletransformers
+scikit-learn
+nltk
+pyinflect
+pytesseract
+Pillow
+gTTS

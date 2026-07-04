@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexify - Reading Made Easier</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">LEXIFY</div>
+        <div class="auth-buttons" id="navAuth">
+            <button class="btn-login" onclick="openModal('login')">Log In</button>
+            <button class="btn-signup" onclick="openModal('signup')">Sign Up</button>
+        </div>
+        <div class="user-profile" id="navProfile" style="display: none;">
+            <span id="welcomeText" style="font-weight: bold; margin-right: 15px; color: var(--primary);"></span>
+            <button class="btn-secondary" onclick="logoutUser()">Log Out</button>
+        </div>
+    </nav>
+
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="close-btn" onclick="closeModal()">✖</button>
+            <h2 id="modalTitle">Log In</h2>
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <input type="text" id="authUsername" placeholder="Username" required class="modal-input">
+                <input type="password" id="authPassword" placeholder="Password" required class="modal-input">
+                <button type="submit" id="authSubmitBtn" class="btn-simplify-main modal-submit">Submit</button>
+            </form>
+            <p id="authMessage" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+        </div>
+    </div>
+
+   <header class="hero">
+    <h1>Reading made <span>accessible</span> for every mind.</h1>
+    <p>Your personal AI reading assistant. Designed specifically for dyslexic readers with custom typography, smart audio, and clear language.</p>
+</header>
+
+    <main class="workspace">
+        
+        <section class="panel input-section">
+            <h3>1. Original Text</h3>
+            
+            <div class="input-actions">
+                <button class="btn-secondary" onclick="document.getElementById('imageUpload').click()">🖼️ Upload Image (OCR)</button>
+                <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="extractTextFromImage()">
+                <span id="ocrLoadingText" class="ocr-loading">⏳ Extracting text...</span>
+                
+                <div class="input-tts">
+                    <button class="btn-action-small" onclick="speakInputText()">🔊 Read Input</button>
+                    <button class="btn-action-small btn-stop" onclick="stopSpeech()">⏹ Stop</button>
+                </div>
+            </div>
+
+            <textarea id="inputText" placeholder="Paste your complex textbook material here, or upload an image to extract text..."></textarea>
+            
+            <div class="action-container">
+                <button class="btn-simplify-main" id="mainSimplifyBtn" onclick="processText()">Simplify Text ➔</button>
+                <div id="loadingMsg" class="loading-msg">⚙️ Analyzing and rewriting...</div>
+            </div>
+        </section>
+
+        <section class="panel output-section">
+            <h3>2. Simplified Output</h3>
+            
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <label>Size (<span id="sizeVal">18</span>px):</label>
+                    <input type="range" id="fontSizeSlider" min="14" max="32" value="18" oninput="updateStyling()">
+                </div>
+                <div class="toolbar-group">
+                    <label>Color:</label>
+                    <input type="color" id="fontColorPicker" value="#333333" oninput="updateStyling()">
+                </div>
+                <div class="toolbar-group">
+                    <label>Vol (<span id="volVal">1.0</span>):</label>
+                    <input type="range" id="ttsVolume" min="0" max="1" step="0.1" value="1" oninput="updateTTSValues()">
+                </div>
+                <div class="toolbar-group">
+                    <label>Spd (<span id="spdVal">0.9</span>x):</label>
+                    <input type="range" id="ttsSpeed" min="0.1" max="2" step="0.1" value="0.9" oninput="updateTTSValues()">
+                </div>
+                <div class="accessibility-controls">
+                <label for="spacing-slider">Letter Spacing:</label>
+                <input type="range" id="spacing-slider" min="0" max="5" value="0" step="0.5">
+                </div>
+                <div class="toolbar-group no-border">
+                    <button class="btn-action" onclick="speakOutputText()">🔊 Play</button>
+                    <button class="btn-action btn-stop" onclick="stopSpeech()">⏹ Stop</button>
+                </div>
+                <button id="saveSettingsBtn" class="btn-action" style="display:none; background-color: #27ae60; margin-left: auto;" onclick="saveUserSettings()">💾 Save</button>
+            </div>
+
+            <textarea id="outputText" readonly placeholder="Your simplified, dyslexic-friendly text will appear here..."></textarea>
+            
+            <div id="glossarySection" class="glossary-container" style="display: none;">
+                <h4>📚 Definition Glossary (Words Changed)</h4>
+                <div id="glossaryGrid" class="glossary-grid"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <div class="chatbot-container">
+        <button class="chatbot-toggle" onclick="toggleChatbot()">💬 LexiBot</button>
+        <div class="chatbot-panel" id="chatbotPanel">
+            <div class="chatbot-header">
+                <span>🤖 LexiBot Assistant</span>
+                <button onclick="toggleChatbot()" style="background:none;border:none;color:white;cursor:pointer;">✖</button>
+            </div>
+            <div class="chatbot-body" id="chatbotBody">
+                <div class="bot-msg">Hi! I'm LexiBot. I can help explain concepts or answer questions about your text!</div>
+            </div>
+            <div class="chatbot-input">
+                <input type="text" id="chatInput" placeholder="Ask a question..." onkeypress="handleChatEnter(event)">
+                <button onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

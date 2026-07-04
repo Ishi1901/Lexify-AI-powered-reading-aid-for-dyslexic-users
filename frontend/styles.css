@@ -1,0 +1,136 @@
+@font-face {
+    font-family: 'OpenDyslexicLocal';
+    src: url('OpenDyslexic3-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'OpenDyslexicLocal';
+    src: url('OpenDyslexic3-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+:root {
+    --primary: #8a2be2;
+    --primary-hover: #7322bf;
+    --bg-color: #fcfcfc;
+    --panel-bg: #ffffff;
+    --text-main: #333333;
+}
+
+body { font-family: 'OpenDyslexicLocal', sans-serif, Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; }
+
+/* Navbar & Hero */
+.navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background: var(--panel-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.logo { font-size: 24px; font-weight: bold; color: var(--primary); }
+.auth-buttons button { margin-left: 10px; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-login { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+.btn-signup { background: var(--primary); border: 2px solid var(--primary); color: white; }
+.hero { text-align: center; padding: 40px 20px 20px; }
+.hero h1 { font-size: 42px; margin-bottom: 10px; }
+.hero h1 span { color: var(--primary); text-decoration: underline; text-decoration-color: #d8b4fe; text-decoration-thickness: 4px; }
+.hero p { color: #666; font-size: 18px; }
+
+/* Modal Styles */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+.modal-box { background: white; padding: 30px; border-radius: 12px; width: 300px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 16px; cursor: pointer; color: #888; }
+.modal-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+.modal-submit { padding: 12px; font-size: 16px; width: 100%; }
+
+/* Workspace */
+.workspace { display: flex; flex-direction: column; gap: 30px; padding: 20px; max-width: 900px; margin: 0 auto 50px auto; }
+.panel { background: var(--panel-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 30px; display: flex; flex-direction: column; }
+.panel h3 { margin-top: 0; color: #444; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+
+/* Textareas & Inputs */
+textarea { width: 100%; height: 150px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical; box-sizing: border-box; outline: none; margin-bottom: 15px; }
+textarea:focus { border-color: var(--primary); }
+#outputText { font-family: 'OpenDyslexicLocal', sans-serif !important; font-size: 18px; background-color: #fafafa; height: 200px; }
+
+/* Input Actions (OCR & TTS) */
+.input-actions { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn-secondary { background: #f4f0fa; color: var(--primary); border: 2px solid #e1d4f5; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+.btn-secondary:hover { background: #e1d4f5; }
+.input-tts { display: flex; gap: 5px; margin-left: auto; }
+.btn-action-small { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;}
+.ocr-loading { display: none; color: var(--primary); font-size: 14px; font-weight: bold; }
+
+/* Main Button */
+.action-container { text-align: center; margin-top: 10px; }
+.btn-simplify-main { background: var(--primary); color: white; border: none; padding: 15px 40px; font-size: 20px; border-radius: 30px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(138, 43, 226, 0.3); transition: transform 0.2s; width: 100%; }
+.btn-simplify-main:hover { transform: scale(1.02); }
+.btn-simplify-main:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+.loading-msg { display: none; color: var(--primary); margin-top: 15px; font-weight: bold; }
+
+/* Toolbar */
+.toolbar { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; padding: 15px; background: #f4f0fa; border-radius: 8px; align-items: center; }
+.toolbar-group { display: flex; align-items: center; gap: 8px; border-right: 2px solid #ddd; padding-right: 15px; }
+.no-border { border-right: none; padding-right: 0; }
+.toolbar label { font-size: 14px; font-weight: bold; color: #555; min-width: 80px;}
+input[type="range"] { accent-color: var(--primary); width: 80px; }
+input[type="color"] { border: none; cursor: pointer; height: 30px; width: 30px; background: none;}
+.btn-action { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+.btn-action:hover { background: var(--primary-hover); }
+.btn-stop { background: #e74c3c !important; }
+
+/* Glossary Section */
+.glossary-container { margin-top: 20px; padding: 20px; background: #fffdf5; border: 1px solid #f1e2b3; border-radius: 8px; }
+.glossary-container h4 { margin: 0 0 15px 0; color: #b8860b; }
+.glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.glossary-item { background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #f1c40f; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 14px; }
+/* CHANGED: Removed strikethrough (text-decoration: line-through) */
+.glossary-old { color: #e74c3c; margin-right: 5px; font-weight: bold; }
+.glossary-new { font-weight: bold; color: #27ae60; }
+
+/* 1. Make the control panel look clean */
+.accessibility-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    /* font-family: Arial, sans-serif; */
+}
+
+/* 2. Style the label so it's easy to read */
+.accessibility-controls label {
+    font-weight: bold;
+    color: #333;
+    font-size: 16px;
+}
+
+/* 3. Make the slider bigger and easier to grab (Accessibility First!) */
+#spacing-slider {
+    width: 200px;
+    cursor: pointer;
+}
+
+/* 4. The Magic Trick for the Text Box */
+#your-simplified-text-box-id {
+    /* This makes the letters glide smoothly apart when sliding, 
+       instead of snapping instantly and hurting the eyes! */
+    transition: letter-spacing 0.2s ease-in-out; 
+    
+    /* Good default settings for dyslexic readers */
+    line-height: 1.6;
+    font-size: 18px; 
+}
+
+/* Chatbot Sliding Widget */
+.chatbot-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+.chatbot-toggle { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.chatbot-panel { display: none; position: absolute; bottom: 60px; right: 0; width: 300px; height: 400px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); flex-direction: column; overflow: hidden; transform: translateY(20px); opacity: 0; transition: all 0.3s ease; }
+.chatbot-panel.open { display: flex; transform: translateY(0); opacity: 1; }
+.chatbot-header { background: var(--primary); color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+.chatbot-body { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+.chatbot-input { display: flex; padding: 10px; border-top: 1px solid #ddd; background: white; }
+.chatbot-input input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
+.chatbot-input button { background: var(--primary); color: white; border: none; padding: 10px 15px; margin-left: 5px; border-radius: 6px; cursor: pointer; }
+.bot-msg { background: #e1d4f5; color: #333; padding: 10px; border-radius: 10px 10px 10px 0; max-width: 80%; align-self: flex-start; font-size: 14px; }
+.user-msg { background: var(--primary); color: white; padding: 10px; border-radius: 10px 10px 0 10px; max-width: 80%; align-self: flex-end; font-size: 14px; }

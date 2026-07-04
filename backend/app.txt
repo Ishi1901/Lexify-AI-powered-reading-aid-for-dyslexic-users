@@ -1,0 +1,333 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import pytesseract
+from PIL import Image
+from simplifier import engine
+from complexity_model import complexity_gatekeeper
+import textstat
+import evaluate  
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+import nltk
+from nltk.corpus import stopwords
+import json
+from functools import lru_cache
+import spacy
+import pyinflect
+
+# 🧠 Load the English Grammar Engine
+print("⏳ Loading Grammar Engine...")
+nlp = spacy.load('en_core_web_sm')
+print("✅ Grammar Engine Loaded!")
+
+# # 📖 Load the Custom Dictionary for the Sliding Window
+# with open('custom_dictionary.json', 'r') as f:
+#     custom_dict = json.load(f)
+nltk.download('stopwords', quiet=True)
+
+# Create an impenetrable shield of common English words
+english_stopwords = set(stopwords.words('english'))
+custom_ignore = {"name", "human", "system", "very", "this", "that", "with"} 
+combined_shield = english_stopwords.union(custom_ignore)   
+ 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+app = Flask(__name__)
+# ==========================================
+# 🛡️ BULLETPROOF CORS SETUP (UPDATED)
+# ==========================================
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+# Create an empty placeholder for the metric (Lazy Loading)
+sari_metric = None
+
+# ==========================================
+# 💾 DATABASE SETUP
+# ==========================================
+def init_db():
+    with sqlite3.connect('lexify.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                font_size TEXT DEFAULT '18',
+                font_color TEXT DEFAULT '#333333',
+                tts_volume TEXT DEFAULT '1.0',
+                tts_speed TEXT DEFAULT '0.9'
+            )
+        ''')
+        conn.commit()
+
+init_db()
+
+# ==========================================
+# 🔐 AUTHENTICATION ROUTES (UPDATED WITH 'OPTIONS')
+# ==========================================
+@app.route('/signup', methods=['POST', 'OPTIONS'])
+def signup():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+        
+    hashed_pw = generate_password_hash(password)
+    
+    try:
+        with sqlite3.connect('lexify.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
+            conn.commit()
+        return jsonify({"message": "User created successfully!"}), 201
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Username already exists"}), 409
+
+@app.route('/login', methods=['POST', 'OPTIONS'])
+def login():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    with sqlite3.connect('lexify.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT password, font_size, font_color, tts_volume, tts_speed FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        
+    if user and check_password_hash(user[0], password):
+        return jsonify({
+            "message": "Login successful",
+            "settings": {
+                "font_size": user[1],
+                "font_color": user[2],
+                "tts_volume": user[3],
+                "tts_speed": user[4]
+            }
+        }), 200
+    else:
+        return jsonify({"error": "Invalid username or password"}), 401
+
+@app.route('/save_settings', methods=['POST', 'OPTIONS'])
+def save_settings():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    data = request.json
+    username = data.get('username')
+    font_size = data.get('font_size')
+    font_color = data.get('font_color')
+    tts_volume = data.get('tts_volume')
+    tts_speed = data.get('tts_speed')
+    
+    with sqlite3.connect('lexify.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET font_size = ?, font_color = ?, tts_volume = ?, tts_speed = ? 
+            WHERE username = ?
+        """, (font_size, font_color, tts_volume, tts_speed, username))
+        conn.commit()
+        
+    return jsonify({"message": "Settings saved successfully!"}), 200
+
+# 🧠 THE MEMORY CACHE
+# maxsize=1000 means it will remember the last 1,000 translations!
+@lru_cache(maxsize=1000)
+def cached_simplify(sentence, word):
+    print(f"⚙️ Running heavy AI math for: '{word}'...")
+    return engine.simplify(sentence, word)
+
+# 🪄 THE GRAMMAR MATCHER
+def match_grammar(original_word, simplified_word):
+    # 1. Read the grammar tag of the complex word (e.g., 'VBZ' for present-tense verb)
+    orig_token = nlp(original_word)[0]
+    target_tag = orig_token.tag_
+    
+    # 2. Look at the new simple word
+    new_token = nlp(simplified_word)[0]
+    
+    # 3. Force the simple word to bend to the target tag!
+    inflected_word = new_token._.inflect(target_tag)
+    
+    # Return the perfectly conjugated word (or the original if it fails)
+    return inflected_word if inflected_word else simplified_word
+
+
+# ==========================================
+# 🧠 CORE AI ROUTES
+# ==========================================
+@app.route('/simplify', methods=['POST', 'OPTIONS'])
+def simplify_text():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    global sari_metric
+    
+    if sari_metric is None:
+        print("⏳ Loading SARI Evaluation Metric (First Request Only)...")
+        sari_metric = evaluate.load("sari")
+        print("✅ SARI Metric Loaded successfully!")
+
+    data = request.get_json()
+    text = data.get('text', '')
+    reference_text = data.get('reference', '') 
+
+    try:
+        with open('custom_dictionary.json', 'r') as f:
+            custom_dict = json.load(f)
+    except FileNotFoundError:
+        custom_dict = {} # Safety fallback just in case the file goes missing
+        print("⚠️ Warning: custom_dictionary.json not found!")
+    
+    print(f"\n--- NEW REQUEST ---")
+    print(f"Original Text: {text}")
+
+    words = text.split()
+    final_words = []
+    glossary = [] 
+    
+    i = 0
+    while i < len(words):
+        match_found = False
+        
+        # 🪟 THE SLIDING WINDOW (Checks 3-word phrases, then 2-word phrases)
+        for window in [3, 2]:
+            if i + window <= len(words):
+                chunk = words[i:i+window]
+                # Clean the chunk (e.g. ["financial", "institutions,"] -> "financial institutions")
+                clean_chunk = " ".join(["".join(filter(str.isalnum, w)) for w in chunk]).lower()
+                
+                # If this exact phrase is in our custom dictionary, swap the whole thing!
+                if clean_chunk in custom_dict:
+                    print(f"🧩 Multi-Word Match Found: '{clean_chunk}'")
+                    replacement = custom_dict[clean_chunk][0] # Grab the first synonym
+                    
+                    final_words.append(replacement)
+                    
+                    glossary.append({
+                        "original": clean_chunk, 
+                        "simplified": replacement
+                    })
+                    
+                    # 🦘 JUMP FORWARD! Skip the words we just replaced.
+                    i += window
+                    match_found = True
+                    break 
+
+        if match_found:
+            continue
+            
+        # 🛑 IF NO MULTI-WORD MATCH, FALL BACK TO YOUR SINGLE WORD LOGIC:
+        word = words[i]
+        clean_word = "".join(filter(str.isalnum, word))
+        
+        # 1. Check the Shield
+        if len(clean_word) <= 3 or clean_word.lower() in combined_shield:
+            final_words.append(word)
+
+        # 👇 2. NEW: The Smart Dictionary Check (Lemmatization) 👇
+        elif nlp(clean_word)[0].lemma_.lower() in custom_dict:
+            lemma = nlp(clean_word)[0].lemma_.lower()
+            print(f"📖 Smart Dictionary found root '{lemma}' for word '{clean_word}'")
+            base_synonym = custom_dict[lemma][0] 
+            
+            # Force the synonym to match the original word's grammar!
+            perfect_grammar_word = match_grammar(clean_word, base_synonym)
+            
+            # Re-attach the punctuation!
+            final_word_with_punct = word.replace(clean_word, perfect_grammar_word)
+            final_words.append(final_word_with_punct) 
+            glossary.append({
+                "original": clean_word, 
+                "simplified": perfect_grammar_word
+            })
+        # 👆 End of Smart Dictionary logic 👆
+
+        # 3. Check the Gatekeeper (If not in dictionary, let the AI try!)
+        elif clean_word and complexity_gatekeeper.is_complex(clean_word):
+            print(f"🧠 Gatekeeper flagged single word: '{clean_word}'")
+            simplified_sentence = cached_simplify(text, clean_word)
+            
+            try:
+                new_word = simplified_sentence.split()[words.index(word)]
+                clean_new_word = "".join(filter(str.isalnum, new_word))
+                
+                # Apply grammar matching to the AI's chosen word too!
+                # Apply grammar matching to the AI's chosen word too!
+                perfect_grammar_word = match_grammar(clean_word, clean_new_word)
+                
+                # Re-attach the punctuation!
+                final_word_with_punct = word.replace(clean_word, perfect_grammar_word)
+                final_words.append(final_word_with_punct)
+                
+                if clean_word.lower() != clean_new_word.lower():
+                    glossary.append({
+                        "original": clean_word, 
+                        "simplified": perfect_grammar_word
+                    })
+            except IndexError:
+                final_words.append(word)
+                
+        # 4. If all else fails, just keep the original word
+        else:
+            final_words.append(word)
+            
+        i += 1 # Move to the next single word
+            
+    final_text = " ".join(final_words)
+    
+    original_grade = textstat.text_standard(text)
+    simplified_grade = textstat.text_standard(final_text)
+    fk_ease_orig = textstat.flesch_reading_ease(text)
+    fk_ease_simp = textstat.flesch_reading_ease(final_text)
+    fk_grade_orig = textstat.flesch_kincaid_grade(text)
+    fk_grade_simp = textstat.flesch_kincaid_grade(final_text)
+    
+    sari_score = "N/A (No reference provided)"
+    if reference_text:
+        results = sari_metric.compute(sources=[text], predictions=[final_text], references=[[reference_text]])
+        sari_score = round(results['sari'], 2)
+
+    print(f"Final Output: {final_text}")
+    print(f"📚 Glossary Generated: {len(glossary)} words swapped.")
+    print(f"📉 Simplified Grade: {simplified_grade}")
+    print(f"-------------------")
+    
+    return jsonify({
+        "simplified": final_text,
+        "glossary": glossary,
+        "original_grade": original_grade,
+        "simplified_grade": simplified_grade,
+        "fk_ease_original": fk_ease_orig,
+        "fk_ease_simplified": fk_ease_simp,
+        "fk_grade_original": fk_grade_orig,
+        "fk_grade_simplified": fk_grade_simp,
+        "sari_score": sari_score 
+    })
+
+@app.route('/ocr', methods=['POST', 'OPTIONS'])
+def process_image():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    file = request.files['image']
+    img = Image.open(file.stream)
+    text = pytesseract.image_to_string(img) 
+    return jsonify({"text": text})
+
+if __name__ == '__main__':
+    app.run(debug=False, port=5000)

@@ -1,0 +1,13 @@
+
+✅ ==========================================
+🏆 FINAL REPORT: WIKILARGE CORPUS (1,000 SAMPLES)
+==========================================
+⏱️ Total Execution Time:  419.22 minutes
+🔄 Texts Processed:       981/1000 (98.1% Success Rate)
+------------------------------------------
+📉 Avg. Original FK:      11.92
+📉 Avg. Simplified FK:    10.10
+🔥 Total Grade Drop:      -1.81 Grades!
+------------------------------------------
+🌟 Average SARI Score:    32.63 / 100
+==========================================
