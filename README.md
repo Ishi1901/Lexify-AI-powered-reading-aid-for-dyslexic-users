@@ -53,6 +53,18 @@ The project is structured into a modular architecture to decouple the web server
 
 
 ### Step-by-step Execution
-1. **Clone the repository or extract the project folder:**
-   ```bash
-   cd Lexify
+
+**1. Clone the repository or extract the project folder, then run the following commands:**
+```bash
+# Enter the main project directory
+cd Lexify
+
+# Install all required Python dependencies
+pip install -r requirements.txt
+
+# Download the required linguistic datasets
+python -m spacy download en_core_web_sm
+
+# Navigate to the backend directory and boot the server
+cd backend
+python app.py
